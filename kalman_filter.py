@@ -48,7 +48,7 @@ class KalmanFilter(object):
         self.z = np.array([[None]*self.dim_z]).T
 
         self.K = np.zeros((dim_x, dim_z))   # Kalman gain
-        self.y = np.zeros((dim_z, 1))
+        self.v = np.zeros((dim_z, 1))
         self.S = np.zeros((dim_z, dim_z))   # system uncertainty
         self.SI = np.zeros((dim_z, dim_z))  # inverse system uncertainty
 
@@ -99,7 +99,7 @@ class KalmanFilter(object):
             self.z = np.array([[None]*self.dim_z]).T
             self.x_post = self.x.copy()
             self.P_post = self.P.copy()
-            self.y = np.zeros((self.dim_z, 1))
+            self.v = np.zeros((self.dim_z, 1))
             return
 
         if R is None:
@@ -112,7 +112,7 @@ class KalmanFilter(object):
             z = reshape_z(z, self.dim_z, self.x.ndim)
 
         # innovation calculation:
-        self.y = z - np.dot(H, self.x)
+        self.v = z - np.dot(H, self.x)
         PHT = np.dot(self.P, H.T)
 
         # now the innovation uncertainty: S = HPH' + R
@@ -123,7 +123,7 @@ class KalmanFilter(object):
         self.K = np.dot(PHT, self.SI)
 
         # final prediction can be made as x = x + K*innovation
-        self.x = self.x + np.dot(self.K, self.y)
+        self.x = self.x + np.dot(self.K, self.v)
 
         # P = (I-KH)P(I-KH)' + KRK' a more numerically stable version of P = (I-KH)P
         I_KH = self._I - np.dot(self.K, H)
@@ -164,13 +164,12 @@ class KalmanInformationFilter(object):
         self.z = np.array([[None]*self.dim_z]).T
 
         self.K = 0.  # kalman gain
-        self.y = np.zeros((dim_z, 1))
+        self.v = np.zeros((dim_z, 1))  # innovation
         self.z = np.zeros((dim_z, 1))
         self.S = 0.  # system uncertainty in measurement space
 
         # identity matrix.
         self._I = np.eye(dim_x)
-        self._no_information = False
         self.inv = np.linalg.inv
 
         # save priors and posteriors
@@ -241,7 +240,7 @@ class KalmanInformationFilter(object):
         # x_hat = Fx + Bu, it is assumed that noise is 0 mean
 
         if B is not None and u is not None:
-            self.x = np.dot(F, self.x) + np.dot(B, self.x)
+            self.x = np.dot(F, self.x) + np.dot(B, u)
         else:
             self.x = np.dot(F, self.x)
 
