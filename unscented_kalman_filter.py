@@ -186,7 +186,7 @@ class UnscentedKalmanFilter(object):
         self.x_prior = x.copy()
         self.P_prior = self.P.copy()
 
-    def update(self, z, u=None, h=None, R=None):
+    def update(self, z, h=None, R=None):
 
         if z is None:  # No measurement is available
             self.x_post = self.x
@@ -208,10 +208,8 @@ class UnscentedKalmanFilter(object):
         P = self.P
 
         # Now we need to propagate the points through the measurement model
-        if u is None:
-            Z = h(X)
-        else:
-            Z = h(X, u)
+
+        Z = h(X)
 
         # Now we can use the propagated sigma points for mean and covariance estimation:
         # z_hat = sum(Wp_iX_i)                             equation for mean calculation
@@ -279,26 +277,27 @@ class UnscentedKalmanInformationFilter(object):
         self._k = 3 - dim_x
 
         self.x = np.zeros((dim_x, 1))  # state
+        self.x_info = np.zeros((dim_x, 1))  # state in information space
         self.P = np.eye(dim_x)  # estimation uncertainty covariance
         self.P_chol = np.eye(dim_x)  # Cholesky decomposition of P
+        self.P_inv = np.eye(dim_x)  # estimation uncertainty covariance inversion
         self.Q = np.eye(dim_x)  # process uncertainty
         self.f = None  # non-linear process function
 
         self.z = np.zeros((dim_z, 1))  # measurement
         self.h = None  # non-linear measurement function
-        self.R = np.eye(dim_z)  # measurement uncertainty
+        self.R_inv = np.eye(dim_z)  # measurement uncertainty
 
         self.K = np.zeros((dim_x, dim_z))  # Kalman gain matrix
         self.v = np.zeros((dim_z, 1))  # innovation vector
         self.S = np.zeros((dim_z, dim_z))  # innovation covariance
-        self.SI = np.zeros((dim_z, dim_z))  # innovation covariance inverse
         self.C = np.zeros((dim_x, dim_z))  # measurement and state cross-covariance
 
         self._I = np.eye(dim_x)  # identity matrix
 
         # values of x after prediction step
         self.x_prior = self.x.copy()
-        self.P_prior = self.P.copy()
+        self.P_inv_prior = self.P.copy()
 
         self.Wp = np.ones((1, 2 * dim_x + 1))  # weights for sigma points for state estimation
         self.Wc = np.ones((1, 2 * dim_x + 1))  # weights for sigma points for covariance estimation
@@ -306,7 +305,7 @@ class UnscentedKalmanInformationFilter(object):
 
         # values of x after update step
         self.x_post = self.x.copy()
-        self.P_post = self.P.copy()
+        self.P_inv_post = self.P.copy()
 
         self.inv = np.linalg.inv
         self.cholesky = np.linalg.cholesky
@@ -434,16 +433,16 @@ class UnscentedKalmanInformationFilter(object):
         # a vector with dimensions (n, ) so we have to use keepdims=True to preserve the dimension (n, 1)
 
         # More info about broadcasting can be found here: https://numpy.org/doc/stable/user/basics.broadcasting.html
-
-        self.S = ((X - x) * Wc).dot((X - x).T) + Q  # Similarly like before (X-x)*Wp multiples each row of (X-x) with
-        # values from row vector Wc.
+        self.P = ((X - x) * Wc).dot((X - x).T) + Q
+        self.P_inv = self.inv(self.P)
 
         self.x = x
+        self.x_info = self.P_inv.dot(self.x)
 
         self.x_prior = x.copy()
-        self.P_prior = self.P.copy()
+        self.P_inv_prior = self.P_inv.copy()
 
-    def update(self, z, u=None, h=None, R=None):
+    def update(self, z, h=None, R_inv=None, multiple_sensors=False):
 
         if z is None:  # No measurement is available
             self.x_post = self.x
@@ -452,11 +451,12 @@ class UnscentedKalmanInformationFilter(object):
 
         if h is None:
             h = self.h
-        if R is None:
-            R = self.R
-        elif np.isscalar(R):
-            R = np.eye(self.dim_z) * R
+        if R_inv is None:
+            R_inv = self.R_inv
+        elif np.isscalar(R_inv):
+            R_inv = np.eye(self.dim_z) * R_inv
 
+        number_of_sensors = z.shape[1]
         # First we need to generate 2n + 1 sigma points, n is number of states in the model
         # Wc are weights used for covariance estimation
         # Wp are weights used for mean estimation
@@ -465,10 +465,8 @@ class UnscentedKalmanInformationFilter(object):
         P = self.P
 
         # Now we need to propagate the points through the measurement model
-        if u is None:
-            Z = h(X)
-        else:
-            Z = h(X, u)
+        Z = h(X)
+
 
         # Now we can use the propagated sigma points for mean and covariance estimation:
         # z_hat = sum(Wp_iX_i)                             equation for mean calculation
@@ -484,11 +482,8 @@ class UnscentedKalmanInformationFilter(object):
 
         # More info about broadcasting can be found here: https://numpy.org/doc/stable/user/basics.broadcasting.html
 
-        S = ((Z - z_hat) * Wc).dot((Z - z_hat).T) + R  # Similarly like before (X-x)*Wp multiples each row of (X-x) with
-        S = S / 2 + S.T / 2
         # values from row vector Wc.
         C = ((X - x) * Wc).dot((Z - z_hat).T)
-        SI = self.inv(S)
 
         # Now we can calculate the Kalman gain:
         # K = C*SI and use it for final update:
@@ -497,19 +492,39 @@ class UnscentedKalmanInformationFilter(object):
         # correction : P = P/2 + P'/2
 
         v = z - z_hat
-        K = C * SI
-        x = x + K * v
-        P = P - K * S * K.T
-        P = P / 2 + P.T / 2 + self.eps
 
-        self.x = x
+        ik = 0  # sensor information contribution
+        Ik = 0  # sensor uncertainty contribution
+        PinvC = np.dot(self.P_inv, C)
+        bias = (C.T).dot(self.x_info)
+        CtPinvt = (self.P_inv.dot(C)).T
+
+        if multiple_sensors:
+            for i in range(number_of_sensors):
+                R_inv_cur = R_inv[i]
+                self.K = PinvC.dot(R_inv_cur)
+                c = z[:, i].reshape((self.dim_z, 1))
+                # innovation calculation:
+                self.v = c - z_hat
+                ik += self.K.dot(self.v + bias)
+                Ik += self.K.dot(CtPinvt)
+        else:
+            self.K = PinvC.dot(R_inv)
+            # innovation calculation:
+            self.v = z - z_hat
+            ik += self.K.dot(self.v + bias)
+            Ik += self.K.dot(CtPinvt)
+
+        self.x_info += ik
+        self.P_inv += Ik
+        self.P = self.inv(P)
+        self.P = self.P / 2 + self.P.T / 2 + self.eps
+
+        self.x = self.P.dot(self.x_info)
         self.v = v
         self.z = z
-        self.K = K
-        self.S = S
-        self.SI = SI
         self.C = C
         self.P = P
 
         self.x_post = x
-        self.P_post = P
+        self.P_inv_post = P
