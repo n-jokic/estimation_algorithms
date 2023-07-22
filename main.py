@@ -100,7 +100,6 @@ if __name__ == "__main__":
         # print(kf.H)
         print(np.array([[sample], [measurements_1d_good[i]]])[0, :].shape)
         kif.update(z=np.array([[sample], [measurements_1d_good[i]]]).T, R_inv=[1, 16], multiple_sensors=True)
-        # TODO: need to upgrade the information filter to work with mutiple sensor,  right now it assumes same noise for every sensor
         kif_est.append(kif.x[0])
         i+=1
 
@@ -110,6 +109,38 @@ if __name__ == "__main__":
     plt.plot(t, measurements_1d, color='black', linestyle='dotted')
     plt.plot(t, measurements_1d_good, color = 'red', linestyle = 'dotted')
     plt.show()
+
+
+def process_model(x):
+    x1 = x[0, 0]
+    x2 = x[1, 0]
+
+    x[0, 0] = 0.1*x2
+    x[1, 0] = x1
+
+    return x
+
+def state_update(x, sigma_p):
+    r = np.random.rand()*sigma_p
+    x = process_model(x) + np.array([[0.1, 0], [0, 1]])*r
+    return x
+
+def measurement_model(x):
+    return np.array([x[0, 0]**3])
+
+t = np.linspace(0, 1, num = 100)
+n = len(t)
+x0 = np.array([[0], [0.1]])
+x = np.zeros((2, n))
+y = np.zeros((1, n))
+xk = x0
+for idx, i in enumerate(t):
+    x[:, idx] = xk[:, 0]
+    y[idx] = measurement_model(xk)[0]
+    xk = state_update(xk, sigma_p=0.1)
+
+print(np.array(x))
+print(np.array(y))
 
 
 

@@ -1,25 +1,6 @@
 import numpy as np
 import math as math
 
-def reshape_z(z, dim_z, ndim):
-    # ensure z is a (dim_z, 1) shaped vector
-
-    z = np.atleast_2d(z)
-    if z.shape[1] == dim_z:
-        z = z.T
-
-    if z.shape != (dim_z, 1):
-        raise ValueError(
-            "z (shape {}) must be convertible to shape ({}, 1)".format(z.shape, dim_z)
-        )
-
-    if ndim == 1:
-        z = z[:, 0]
-
-    if ndim == 0:
-        z = z[0, 0]
-
-    return z
 
 class KalmanFilter(object):
     # x is the state vector, z measurement and u control vector
@@ -38,17 +19,17 @@ class KalmanFilter(object):
         self.dim_z = dim_z
         self.dim_u = dim_u
 
-        self.x = np.zeros((dim_x, 1))       # state
+        self.x = np.zeros((dim_x, ))        # state
         self.P = np.eye(dim_x)              # uncertainty covariance
         self.Q = np.eye(dim_x)              # process uncertainty
         self.B = None                       # control transition matrix
         self.F = np.eye(dim_x)              # state transition matrix
         self.H = np.zeros((dim_z, dim_x))   # measurement function
         self.R = np.eye(dim_z)              # measurement uncertainty
-        self.z = np.array([[None]*self.dim_z]).T
+        self.z = np.array((dim_z, ))
 
         self.K = np.zeros((dim_x, dim_z))   # Kalman gain
-        self.v = np.zeros((dim_z, 1))
+        self.v = np.zeros((dim_z, ))        # innovation
         self.S = np.zeros((dim_z, dim_z))   # system uncertainty
         self.SI = np.zeros((dim_z, dim_z))  # inverse system uncertainty
 
@@ -83,7 +64,7 @@ class KalmanFilter(object):
 
         # Need to update the uncertainty, P = FPF' + Q
 
-        self.P = np.dot(np.dot(F, self.P), F.T) + Q
+        self.P = F @ self.P @ F.T + Q
 
         # save prior
         self.x_prior = self.x.copy()
@@ -96,38 +77,36 @@ class KalmanFilter(object):
         # K = PH'*S^-1, where the S is the innovation uncertainty, S = HPH'+R
 
         if z is None:
-            self.z = np.array([[None]*self.dim_z]).T
+            self.z = np.array([None]*self.dim_z)
             self.x_post = self.x.copy()
             self.P_post = self.P.copy()
-            self.v = np.zeros((self.dim_z, 1))
+            self.v = np.zeros((self.dim_z, ))
             return
 
         if R is None:
             R = self.R
         elif np.isscalar(R):
             R = np.eye(self.dim_z)*R
-
         if H is None:
             H = self.H
-            z = reshape_z(z, self.dim_z, self.x.ndim)
 
         # innovation calculation:
         self.v = z - np.dot(H, self.x)
-        PHT = np.dot(self.P, H.T)
+        PHT = self.P @ H.T
 
         # now the innovation uncertainty: S = HPH' + R
-        self.S = np.dot(H, PHT) + R
+        self.S = H @ PHT + R
         self.SI = self.inv(self.S)
 
         # Now to calculate the Kalman gain
-        self.K = np.dot(PHT, self.SI)
+        self.K = PHT @ self.SI
 
         # final prediction can be made as x = x + K*innovation
         self.x = self.x + np.dot(self.K, self.v)
 
         # P = (I-KH)P(I-KH)' + KRK' a more numerically stable version of P = (I-KH)P
-        I_KH = self._I - np.dot(self.K, H)
-        self.P = np.dot(np.dot(I_KH, self.P), I_KH.T) + np.dot(np.dot(self.K, R), self.K.T)
+        I_KH = self._I - self.K @ H
+        self.P = I_KH @ self.P @ I_KH.T + self.K @ R @ self.K.T
         # save measurement and posterior state
         self.z = np.copy(z)
         self.x_post = self.x.copy()
@@ -152,8 +131,8 @@ class KalmanInformationFilter(object):
         self.dim_z = dim_z
         self.dim_u = dim_u
 
-        self.x = np.zeros((dim_x, 1))  # state
-        self.x_info = np.zeros((dim_x, 1))  # state in information space
+        self.x = np.zeros((dim_x, ))  # state
+        self.x_info = np.zeros((dim_x, ))  # state in information space
         self.P_inv = np.eye(dim_x)   # uncertainty covariance
         self.Q = np.eye(dim_x)       # process uncertainty
         self.B = 0.               # control transition matrix
@@ -161,11 +140,10 @@ class KalmanInformationFilter(object):
         self._F_inv = 0.          # state transition matrix
         self.H = np.zeros((dim_z, dim_x))  # Measurement function
         self.R_inv = np.eye(dim_z)   # state uncertainty
-        self.z = np.array([[None]*self.dim_z]).T
+        self.z = np.array((dim_z, ))
 
         self.K = 0.  # kalman gain
-        self.v = np.zeros((dim_z, 1))  # innovation
-        self.z = np.zeros((dim_z, 1))
+        self.v = np.zeros((dim_z, ))  # innovation
         self.S = 0.  # system uncertainty in measurement space
 
         # identity matrix.
@@ -186,9 +164,10 @@ class KalmanInformationFilter(object):
         # Total information content can be updated as Pinv = Pinv + I, I = H'R_invH
 
         if z is None:
-            self.z = None
+            self.z = np.array([None] * self.dim_z)
             self.x_post = self.x.copy()
-            self.P_inv_post = self.P_inv.copy()
+            self.P_post = self.P.copy()
+            self.v = np.zeros((self.dim_z, ))
             return
 
         if R_inv is None:
@@ -200,7 +179,10 @@ class KalmanInformationFilter(object):
             H = self.H
 
         H_T = H.T
-        number_of_sensors = z.shape[1]
+        if multiple_sensors:
+            number_of_sensors = z.shape[1]
+        else:
+            number_of_sensors = 0
         P_inv = self.P_inv
 
         ik = 0  # sensor information contribution
@@ -246,7 +228,7 @@ class KalmanInformationFilter(object):
 
         # Need to update the uncertainty, P_inv = (FPF' + Q)^-1
 
-        self.P_inv = self.inv(np.dot(F, self.inv(self.P_inv)).dot(F.T) + Q)
+        self.P_inv = self.inv(F @ self.inv(self.P_inv) @ F.T + Q)
 
         # In information space x_info = Pinv*x
         self.x_info = np.dot(self.P_inv, self.x)

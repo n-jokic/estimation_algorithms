@@ -355,30 +355,25 @@ class UnscentedKalmanInformationFilter(object):
         alpha = self.alpha
         beta = self.beta
         k = self.k
-        n = self.dim_x
 
-        lamb = (n + k) * alpha ** 2 - n
+        lamb = (self.dim_x + k) * alpha ** 2 - self.dim_x
 
-        Wp = np.ones((1, 2 * n + 1)) / 2 / (n + lamb)
-        Wc = Wp.copy()
-        Wp[0, 0] *= 2 * lamb
-        Wc[0, 0] = Wp[0, 0] + 1 - alpha ** 2 + beta
-
-        self.Wp = Wp
-        self.Wc = Wc
+        self.Wp /= 2 / (self.dim_x + lamb)
+        self.Wc /= 2 / (self.dim_x + lamb)
+        self.Wp[0, 0] *= 2 * lamb
+        self.Wc[0, 0] = self.Wp[0, 0] + 1 - alpha ** 2 + beta
 
     def _safe_cholesky(self):  # This function ensures that P_chol > 0
-        eps = self.eps
         max_iter = self.max_iter
 
         for idx in range(max_iter):
-            P_chol = self.cholesky(self.P + idx * eps)
-            eig_values = np.linalg.eig(P_chol)
+            self.P_chol = self.cholesky(self.P + idx * self.eps)
+            eig_values = np.linalg.eig(self.P_chol)
 
             # if any(any(np.real(eig) < 0) for eig in eig_values):
             #    continue  # we need to add 1 more eps, P_chol must have positive eig values
 
-            return P_chol
+            return self.P_chol
 
         raise ValueError('P_cholesky is ill-conditioned, increase max_iter')
 
@@ -392,10 +387,10 @@ class UnscentedKalmanInformationFilter(object):
         a = np.sqrt(n + lamb)
         X = np.zeros((n, 2 * n + 1))
 
-        P_chol = a * self._safe_cholesky()
+        self.P_chol = a * self._safe_cholesky()
         X[:, 0] = self.x[:, 0]
-        X[:, 1:n + 1] = (self.x + P_chol)
-        X[:, n + 1:2 * n + 1] = (self.x - P_chol)
+        X[:, 1:n + 1] = (self.x + self.P_chol)
+        X[:, n + 1:2 * n + 1] = (self.x - self.P_chol)
 
         Wc = self.Wc
         Wp = self.Wp

@@ -14,7 +14,7 @@ class ExtendedKalmanFilter(object):
         self.dim_z = dim_z
         self.dim_x = dim_x
 
-        self.x = np.zeros((dim_x, 1))  # state
+        self.x = np.zeros((dim_x, ))  # state
         self.P = np.eye(dim_x)  # estimation uncertainty
         self.f = None  # non-linear process model
         self.h = None  # non-linear measurement model
@@ -23,8 +23,8 @@ class ExtendedKalmanFilter(object):
         self.R = np.eye(dim_z)  # measurement noise
         self.Q = np.eye(dim_x)  # process noise
 
-        self.v = np.zeros((dim_z, 1))  # innovation
-        self.z = np.zeros((dim_z, 1))  # measurement
+        self.v = np.zeros((dim_z, ))  # innovation
+        self.z = np.zeros((dim_z, ))  # measurement
 
         self.K = np.zeros((dim_x, dim_z))  # Kalman gain matrix
         self.S = np.zeros((dim_z, dim_z))  # innovation covariance
