@@ -25,6 +25,7 @@ def generate_trajectory_1d(num_steps, dt, initial_position, velocity, accelerati
     trajectory = np.zeros(num_steps)
 
     for t in range(num_steps):
+        acceleration = np.random.rand()
         position += velocity * dt + 0.5 * acceleration * dt**2
         velocity += acceleration * dt
         trajectory[t] = position
@@ -66,7 +67,7 @@ if __name__ == "__main__":
     print(trajectory_1d[:5])
     print("\nNoisy Measurements:")
     print(measurements_1d[:5])
-    kf = kalman.KalmanFilter(dim_x = 2, dim_z = 1)
+    kf = kalman.KalmanFilter(dim_x=2, dim_z=1)
     kf.F = np.array([[1, dt],
               [0, 1]])
     kf.R = np.eye(1)*0.25
@@ -95,11 +96,35 @@ if __name__ == "__main__":
     kif_est = []
     i = 0
     measurements_1d_good = generate_measurements_1d(trajectory_1d, measurement_noise_std/8)
+
+    R_inv = np.zeros((2, 1, 1))
+    R_inv[0, :, :] = 1
+    R_inv[1, :, :] = 16
     for sample in measurements_1d:
         kif.predict()
         # print(kf.H)
-        print(np.array([[sample], [measurements_1d_good[i]]])[0, :].shape)
-        kif.update(z=np.array([[sample], [measurements_1d_good[i]]]).T, R_inv=[1, 16], multiple_sensors=True)
+        #print(np.array([[sample], [measurements_1d_good[i]]])[0, :].shape)
+        kif.update(z=np.array([[sample], [measurements_1d_good[i]]]), R_inv=R_inv, multiple_sensors=True)
+        kif_est.append(kif.x[0])
+        i+=1
+
+    t = np.linspace(0, 10, num_steps)
+    plt.plot(t, trajectory_1d)
+    plt.plot(t, np.array(kif_est))
+    plt.plot(t, measurements_1d, color='black', linestyle='dotted')
+    plt.plot(t, measurements_1d_good, color = 'red', linestyle = 'dotted')
+    plt.show()
+
+    R_inv = np.zeros((1, 1))
+    R_inv[:, :] = 1
+    kif_est = []
+    kif.x = np.array([0, 0])
+    kif.P_inv = np.eye(2)*0.01
+    for sample in measurements_1d:
+        kif.predict()
+        # print(kf.H)
+        #print(np.array([[sample], [measurements_1d_good[i]]])[0, :].shape)
+        kif.update(z=np.array([sample]), R_inv=R_inv, multiple_sensors=False)
         kif_est.append(kif.x[0])
         i+=1
 
@@ -111,38 +136,5 @@ if __name__ == "__main__":
     plt.show()
 
 
-def process_model(x):
-    x1 = x[0, 0]
-    x2 = x[1, 0]
-
-    x[0, 0] = 0.1*x2
-    x[1, 0] = x1
-
-    return x
-
-def state_update(x, sigma_p):
-    r = np.random.rand()*sigma_p
-    x = process_model(x) + np.array([[0.1, 0], [0, 1]])*r
-    return x
-
-def measurement_model(x):
-    return np.array([x[0, 0]**3])
-
-t = np.linspace(0, 1, num = 100)
-n = len(t)
-x0 = np.array([[0], [0.1]])
-x = np.zeros((2, n))
-y = np.zeros((1, n))
-xk = x0
-for idx, i in enumerate(t):
-    x[:, idx] = xk[:, 0]
-    y[idx] = measurement_model(xk)[0]
-    xk = state_update(xk, sigma_p=0.1)
-
-print(np.array(x))
-print(np.array(y))
 
 
-
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/

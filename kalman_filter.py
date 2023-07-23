@@ -42,7 +42,7 @@ class KalmanFilter(object):
         self.P_post = self.P.copy()
 
         self.inv = np.linalg.inv
-
+        
     def predict(self, u=None, B=None, F=None, Q=None):
         # Prediction step of KF algorithm
         # Prediction is calculated as expected value of the model, conditioned by the measurements
@@ -58,9 +58,9 @@ class KalmanFilter(object):
         # x_hat = Fx + Bu, it is assumed that noise is 0 mean
 
         if B is not None and u is not None:
-            self.x = np.dot(F, self.x) + np.dot(B, self.x)
+            self.x = F @ self.x + B @ self.x
         else:
-            self.x = np.dot(F, self.x)
+            self.x = F @ self.x
 
         # Need to update the uncertainty, P = FPF' + Q
 
@@ -91,7 +91,7 @@ class KalmanFilter(object):
             H = self.H
 
         # innovation calculation:
-        self.v = z - np.dot(H, self.x)
+        self.v = z - H @ self.x
         PHT = self.P @ H.T
 
         # now the innovation uncertainty: S = HPH' + R
@@ -102,7 +102,7 @@ class KalmanFilter(object):
         self.K = PHT @ self.SI
 
         # final prediction can be made as x = x + K*innovation
-        self.x = self.x + np.dot(self.K, self.v)
+        self.x = self.x + self.K @ self.v
 
         # P = (I-KH)P(I-KH)' + KRK' a more numerically stable version of P = (I-KH)P
         I_KH = self._I - self.K @ H
@@ -180,23 +180,21 @@ class KalmanInformationFilter(object):
 
         H_T = H.T
         if multiple_sensors:
-            number_of_sensors = z.shape[1]
+            # It is assumed that data has been processed externally for None values, reason is that it's much easier
+            # to do it apriori.
+            z = z.reshape((*z.shape, 1))  # reshaping into a 3D array of form N x dim_z x 1 for broadcasting purposes
+            # R_inv will have the shape N x dim_z x dim_z in this case
         else:
-            number_of_sensors = 0
+
+            R_inv = R_inv.reshape((1, *R_inv.shape))  # reshaping to make the following code work for both cases, now E_inv has
+            # shape (1, dim_z, dim_z)
+            z = z.reshape((1, self.dim_z, 1))
+
         P_inv = self.P_inv
 
-        ik = 0  # sensor information contribution
-        Ik = 0  # sensor uncertainty contribution
-
-        if multiple_sensors:
-            for i in range(number_of_sensors):
-                R_inv_cur = R_inv[i]
-                c = z[:, i].reshape((self.dim_z, 1))
-                ik += np.dot(H_T, R_inv_cur).dot(c)
-                Ik += np.dot(H_T, R_inv_cur).dot(H)
-        else:
-            ik += np.dot(H_T, R_inv).dot(z)
-            Ik += np.dot(H_T, R_inv).dot(H)
+        ik = H_T @ (R_inv @ z).sum(axis=0)  # sensor information contribution
+        ik = ik.squeeze()
+        Ik = (H_T @ R_inv @ H).sum(axis=0)  # sensor uncertainty contribution
 
         self.x_info += ik
         self.P_inv += Ik
