@@ -149,11 +149,11 @@ class ExtendedKalmanInformationFilter(object):
 
         # these will always be a copy of x,P after predict() is called
         self.x_prior = self.x.copy()
-        self.P_inv_prior = self.P.copy()
+        self.P_inv_prior = self.P_inv.copy()
 
         # these will always be a copy of x,P after update() is called
         self.x_post = self.x.copy()
-        self.P_inv_post = self.P.copy()
+        self.P_inv_post = self.P_inv.copy()
 
     def predict(self, u=None, f=None, dxf=None, Q=None):
         # Prediction step of KF algorithm
@@ -183,7 +183,7 @@ class ExtendedKalmanInformationFilter(object):
 
         # save prior
         self.x_prior = self.x.copy()
-        self.P_inv_prior = self.P.copy()
+        self.P_inv_prior = self.P_inv.copy()
 
     def update(self, z, R_inv=None, h=None, dxh=None, multiple_sensors=False):
         # update stage of the filtering process
@@ -211,12 +211,12 @@ class ExtendedKalmanInformationFilter(object):
         if multiple_sensors:
             number_of_sensors = z.shape[0]   # It is assumed that measurements are stacked in rows
             self.v = np.zeros((number_of_sensors, self.dim_z))
-            jacobian_h = np.zeros((number_of_sensors, self.dim_x, self.dim_x))
+            jacobian_h = np.zeros((number_of_sensors, self.dim_z, self.dim_x))
             bias = np.zeros((number_of_sensors, self.dim_z))
             for idx in range(number_of_sensors):
                 h_cur = h[idx]
                 dxh_cur = dxh[idx]
-                self.v[idx, :] = z - h_cur(self.x)
+                self.v[idx, :] = z[idx, :] - h_cur(self.x)
                 jacobian_h[idx, :, :] = dxh_cur(self.x)
                 bias[idx, :] = jacobian_h[idx, :, :] @ self.x
             self.v = self.v.reshape((*self.v.shape, 1))
@@ -242,7 +242,7 @@ class ExtendedKalmanInformationFilter(object):
 
         # P = P + sum(Ik)
         self.P_inv += Ik
-        
+
         # save measurement and posterior state
         self.z = np.copy(z)
         self.x = np.linalg.solve(self.P_inv, self.x_info)

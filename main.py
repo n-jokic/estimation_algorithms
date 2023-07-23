@@ -120,6 +120,7 @@ if __name__ == "__main__":
     kif_est = []
     kif.x = np.array([0, 0])
     kif.P_inv = np.eye(2)*0.01
+
     for sample in measurements_1d:
         kif.predict()
         # print(kf.H)
