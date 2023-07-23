@@ -63,7 +63,7 @@ class ExtendedKalmanFilter(object):
         # Need to update the uncertainty, P = dxf P dxf' + Q, dxf is the jacobian of f,
         # jacobian is evaluated at previous value of x
 
-        self.P = np.dot(dxf(self.x), self.P).dot(dxf(self.x).T) + Q
+        self.P = dxf(self.x) @ self.P @ dxf(self.x).T + Q
         self.x = x
 
         # save prior
@@ -77,10 +77,10 @@ class ExtendedKalmanFilter(object):
         # K = PH'*S^-1, where the S is the innovation uncertainty, S = HPH'+R
 
         if z is None:
-            self.z = np.array([[None] * self.dim_z]).T
+            self.z = np.array([None] * self.dim_z)
             self.x_post = self.x.copy()
             self.P_post = self.P.copy()
-            self.v = np.zeros((self.dim_z, 1))
+            self.v = np.zeros((self.dim_z, ))
             return
 
         if R is None:
@@ -95,21 +95,21 @@ class ExtendedKalmanFilter(object):
 
         # innovation calculation:
         self.v = z - h(self.x)
-        PHT = np.dot(self.P, dxh(self.x).T)
+        PHT = self.P @ dxh(self.x).T
 
         # now the innovation uncertainty: S = dxh P dhx' + R dhx is jacobian of h evaluated at predicted value of x
-        self.S = np.dot(dxh(self.x), PHT) + R
+        self.S = dxh(self.x) @ PHT + R
         self.SI = self.inv(self.S)
 
         # Now to calculate the Kalman gain
-        self.K = np.dot(PHT, self.SI)
+        self.K = PHT @ self.SI
 
         # final prediction can be made as x = x + K*innovation
-        self.x = self.x + np.dot(self.K, self.v)
+        self.x = self.x + self.K @ self.v
 
         # P = P - KSK'
 
-        self.P = self.P - np.dot(self.K, self.S).dot(self.K.T)
+        self.P = self.P - self.K @ self.S @ self.K.T
         # save measurement and posterior state
         self.z = np.copy(z)
         self.x_post = self.x.copy()
@@ -128,8 +128,8 @@ class ExtendedKalmanInformationFilter(object):
         self.dim_z = dim_z
         self.dim_x = dim_x
 
-        self.x = np.zeros((dim_x, 1))  # state
-        self.x_info = np.zeros((dim_x, 1))  # state in information space
+        self.x = np.zeros((dim_x, ))  # state
+        self.x_info = np.zeros((dim_x, ))  # state in information space
         self.P_inv = np.eye(dim_x)  # estimation information
         self.f = None  # non-linear process model
         self.h = None  # non-linear measurement model
@@ -138,8 +138,8 @@ class ExtendedKalmanInformationFilter(object):
         self.R_inv = np.eye(dim_z)  # measurement noise
         self.Q = np.eye(dim_x)  # process noise
 
-        self.v = np.zeros((dim_z, 1))  # innovation
-        self.z = np.zeros((dim_z, 1))  # measurement
+        self.v = np.zeros((dim_z, ))  # innovation
+        self.z = np.zeros((dim_z, ))  # measurement
 
         self.K = np.zeros((dim_x, dim_z))  # Kalman gain matrix
         self.S = np.zeros((dim_z, dim_z))  # innovation covariance in information space
@@ -177,7 +177,7 @@ class ExtendedKalmanInformationFilter(object):
         # Need to update the uncertainty, P = dxf P dxf' + Q, dxf is the jacobian of f,
         # jacobian is evaluated at previous value of x
 
-        self.P_inv = self.inv(np.dot(dxf(self.x), self.inv(self.P_inv)).dot(dxf(self.x).T) + Q)
+        self.P_inv = self.inv(dxf(self.x) @ self.inv(self.P_inv) @ dxf(self.x).T + Q)
         self.x_info = x_info
         self.x = np.linalg.solve(self.P_inv, self.x_info)
 
@@ -195,7 +195,7 @@ class ExtendedKalmanInformationFilter(object):
             self.z = np.array([[None] * self.dim_z]).T
             self.x_post = self.x.copy()
             self.P_inv_post = self.P_inv.copy()
-            self.v = np.zeros((self.dim_z, 1))
+            self.v = np.zeros((self.dim_z, ))
             return
 
         if R_inv is None:
@@ -208,33 +208,41 @@ class ExtendedKalmanInformationFilter(object):
         if dxh is None:
             dxh = self.dxh
 
-        number_of_sensors = z.shape[1]
-        jacobian_h = dxh(self.x)
-        z_hat = h(self.x)
-        bias = jacobian_h.dot(self.x)
-
-        ik = 0  # sensor information contribution
-        Ik = 0  # sensor uncertainty contribution
-
         if multiple_sensors:
-            for i in range(number_of_sensors):
-                R_inv_cur = R_inv[i]
-                c = z[:, i].reshape((self.dim_z, 1))
-                # innovation calculation:
-                self.v = c - z_hat
-                ik += np.dot(jacobian_h.T, R_inv_cur).dot(self.v + bias)
-                Ik += np.dot(jacobian_h.T, R_inv_cur).dot(jacobian_h)
+            number_of_sensors = z.shape[0]   # It is assumed that measurements are stacked in rows
+            self.v = np.zeros((number_of_sensors, self.dim_z))
+            jacobian_h = np.zeros((number_of_sensors, self.dim_x, self.dim_x))
+            bias = np.zeros((number_of_sensors, self.dim_z))
+            for idx in range(number_of_sensors):
+                h_cur = h[idx]
+                dxh_cur = dxh[idx]
+                self.v[idx, :] = z - h_cur(self.x)
+                jacobian_h[idx, :, :] = dxh_cur(self.x)
+                bias[idx, :] = jacobian_h[idx, :, :] @ self.x
+            self.v = self.v.reshape((*self.v.shape, 1))
+            bias = bias.reshape((*bias.shape, 1))
         else:
-            self.v = z - z_hat
-            ik += np.dot(jacobian_h.T, R_inv).dot(self.v + bias)
-            Ik += np.dot(jacobian_h.T, R_inv).dot(jacobian_h)
+            self.v = np.zeros((1, self.dim_z))
+            jacobian_h = np.zeros((1, self.dim_x, self.dim_x))
+            bias = np.zeros((1, self.dim_z))
+            self.v[0, :] = z - h(self.x)
+            jacobian_h[0, :, :] = dxh(self.x)
+            bias[0, :] = jacobian_h[0, :, :] @ self.x
+            self.v = self.v.reshape((*self.v.shape, 1))
+            bias = bias.reshape((*bias.shape, 1))
+            R_inv = R_inv.reshape((1, *R_inv.shape))
+
+        jacobian_h_T = jacobian_h.transpose(0, 2, 1)  # Transposing only the matrices
+        ik = (jacobian_h_T @ R_inv @ (self.v + bias)).sum(axis=0)  # sensor information contribution
+        ik = ik.squeeze()
+        Ik = (jacobian_h_T @ R_inv @jacobian_h).sum(axis=0)  # sensor uncertainty contribution
 
         # final prediction can be made as x = x + sum(ik)
         self.x_info += ik
 
         # P = P + sum(Ik)
-
         self.P_inv += Ik
+        
         # save measurement and posterior state
         self.z = np.copy(z)
         self.x = np.linalg.solve(self.P_inv, self.x_info)

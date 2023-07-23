@@ -42,7 +42,7 @@ class KalmanFilter(object):
         self.P_post = self.P.copy()
 
         self.inv = np.linalg.inv
-        
+
     def predict(self, u=None, B=None, F=None, Q=None):
         # Prediction step of KF algorithm
         # Prediction is calculated as expected value of the model, conditioned by the measurements
