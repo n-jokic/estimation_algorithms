@@ -3,14 +3,14 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 import extended_kalman_filter as ekf
-
+import unscented_kalman_filter as ukf
 
 key = random.PRNGKey(0)
 import matplotlib.pyplot as plt
 def process_model(x):
 
     A = jnp.array([[0.5, 0.1], [0, 1]])
-    x = A.dot(x)
+    x = A@x
     return x
 
 def state_update(x, sigma_p):
@@ -20,7 +20,7 @@ def state_update(x, sigma_p):
 
 def measurement_model(x):
     C = jnp.array([[1, 0]])
-    a = jnp.power(C@x, 1)
+    a = jnp.power(C@x, 3)
     return a
 
 t = np.linspace(0, 1, num = 100)
@@ -33,7 +33,7 @@ xk = x0
 for idx, i in enumerate(t):
     x[:, idx] = xk
     y[:, idx] = measurement_model(xk)
-    xk = state_update(xk, sigma_p=1)
+    xk = state_update(xk, sigma_p=0.001)
 
 print(np.array(x))
 print(np.array(y))
@@ -58,7 +58,7 @@ ekf_1.P = np.eye(2)*10
 ekf_1.x = np.array([12., -1.])
 
 ekf_est = []
-for idx, i in enumerate(y):
+for idx, i in enumerate(t):
     y[:, idx] += np.random.randn()*R
 
 ekf_est = np.zeros((2, n))
@@ -104,9 +104,24 @@ for idx, i in enumerate(t):
     ekf_1.predict()
 
 
+ukf_1 = ukf.UnscentedKalmanFilter(dim_x=2, dim_z=1)
+ukf_1.h=measurement_model
+ukf_1.f=process_model
+ukf_1.P=np.eye(2)*10
+ukf_1.x=np.array([3., 0.1])
+ukf_1.R=np.eye(1)*R
+ukf_1.Q=np.eye(2)*10
+ekf_est = np.zeros((2, n))
+ukf_1.max_iter = 100
+for idx, i in enumerate(t):
+    ukf_1.update(z=y[:, idx])
+    ekf_est[:, idx] = ukf_1.x
+    ukf_1.prediction()
+
+
 
 plt.plot(t, x.T)
 plt.plot(t, ekf_est.T, 'k--')
-#plt.plot(t, y.T, color='black', linestyle='dotted')
+plt.plot(t, np.cbrt(y).T, color='black', linestyle='dotted')
 #plt.plot(t, y_2.T, color = 'red', linestyle = 'dotted')
 plt.show()
