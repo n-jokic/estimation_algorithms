@@ -20,7 +20,7 @@ def state_update(x, sigma_p):
 
 def measurement_model(x):
     C = jnp.array([[1, 0]])
-    a = jnp.power(C@x, 3)
+    a = jnp.power(C@x, 1)
     return a
 
 t = np.linspace(0, 1, num = 100)
@@ -45,7 +45,7 @@ f = lambda m: process_model(m)
 h = lambda z: measurement_model(z)
 Jf = jax.jacobian(f)
 Jh = jax.jacobian(h)
-R = 0.1
+R = 0.01
 
 ekf_1 = ekf.ExtendedKalmanFilter(dim_x=2, dim_z=1)
 ekf_1.Q = np.eye(2)*10
@@ -71,7 +71,7 @@ print(ekf_est)
 
 def measurement_model_2(x):
     C = jnp.array([[0, 1]])
-    a = jnp.power(C@x, 2)*jnp.sign(C@x)
+    a = jnp.power(C@x, 1)
     return a
 h = lambda z: measurement_model_2(z)
 Jh_2 = jax.jacobian(h)
@@ -107,12 +107,12 @@ for idx, i in enumerate(t):
 ukf_1 = ukf.UnscentedKalmanFilter(dim_x=2, dim_z=1)
 ukf_1.h=measurement_model
 ukf_1.f=process_model
-ukf_1.P=np.eye(2)*10
+ukf_1.P=np.eye(2)*1
 ukf_1.x=np.array([3., 0.1])
 ukf_1.R=np.eye(1)*R
-ukf_1.Q=np.eye(2)*10
+ukf_1.Q=np.eye(2)*1
 ekf_est = np.zeros((2, n))
-ukf_1.max_iter = 100
+ukf_1.max_iter = 1000
 for idx, i in enumerate(t):
     ukf_1.update(z=y[:, idx])
     ekf_est[:, idx] = ukf_1.x
@@ -122,6 +122,30 @@ for idx, i in enumerate(t):
 
 plt.plot(t, x.T)
 plt.plot(t, ekf_est.T, 'k--')
-plt.plot(t, np.cbrt(y).T, color='black', linestyle='dotted')
+plt.plot(t, y.T, color='black', linestyle='dotted')
 #plt.plot(t, y_2.T, color = 'red', linestyle = 'dotted')
 plt.show()
+
+ukf_1 = ukf.UnscentedKalmanInformationFilter(dim_x=2, dim_z=1)
+ukf_1.h = [measurement_model, measurement_model_2]
+ukf_1.f = process_model
+ukf_1.P_inv = np.eye(2)*1
+ukf_1.x = np.array([3., 0.1])
+ukf_1.y = np.array([3., 0.1])
+ekf_1.R_inv = np.zeros((2, 1, 1))
+ekf_1.R_inv[0, :, :] = np.eye(1)*1/R
+ekf_1.R_inv[1, :, :] = np.eye(1)*1/R
+ukf_1.Q=np.eye(2)*1
+ekf_est = np.zeros((2, n))
+ukf_1.max_iter = 1000
+for idx, i in enumerate(t):
+    ukf_1.update(z=np.array([y[:, idx], y_2[:, idx]]), multiple_sensors=True)
+    ekf_est[:, idx] = ukf_1.x
+    ukf_1.prediction()
+
+plt.plot(t, x.T)
+plt.plot(t, ekf_est.T, 'k--')
+plt.plot(t, y.T, color='black', linestyle='dotted')
+#plt.plot(t, y_2.T, color = 'red', linestyle = 'dotted')
+plt.show()
+
