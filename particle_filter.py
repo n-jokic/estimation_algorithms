@@ -9,13 +9,14 @@ class particle():
         self.x_new = np.zeros(x_state.shape)
 
     def prediction(self):
-        dt = 0.01
+        dt = 0.05
         x_state = self.x_current
-        sigma = 0.01
-        self.x_new = np.array([x_state[0] + (np.cos(x_state[6]) * x_state[1] - np.sin(x_state[6]) * x_state[3]) * dt,
+        sigma_pos = 0.2
+        sigma = 0.2
+        self.x_new = np.array([x_state[0] + (np.cos(x_state[6]) * x_state[1] - np.sin(x_state[6]) * x_state[3]) * dt + np.random.randn()*sigma_pos,
                                x_state[1] + x_state[2] * dt,
                                x_state[2] + np.random.randn()*sigma,
-                               x_state[3] + (np.cos(x_state[6]) * x_state[3] + np.sin(x_state[6]) * x_state[1]) * dt,
+                               x_state[3] + (np.cos(x_state[6]) * x_state[3] + np.sin(x_state[6]) * x_state[1]) * dt + np.random.randn()*sigma_pos,
                                x_state[4] + x_state[5] * dt,
                                x_state[5] + np.random.randn()*sigma,
                                x_state[6] + np.random.randn()*sigma
@@ -24,7 +25,7 @@ class particle():
         self.x_current = self.x_new
 
     def likelihood(self, z):
-        sigma = 0.05
+        sigma = 0.1**2
         x_obs = z[0]
         acc_x_obs = z[1]
         y_obs = z[2]
@@ -32,17 +33,18 @@ class particle():
         theta_obs = z[4]
 
         x_pred = self.x_current[0]
-        acc_x_pred = self.x_current[1]
+        acc_x_pred = self.x_current[2]
         y_pred = self.x_current[3]
-        acc_y_pred = self.x_current[4]
-        theta_pred = self.x_current[5]
+        acc_y_pred = self.x_current[5]
+        theta_pred = self.x_current[6]
 
-        sigma_pos = 1
+        sigma_pos = .1**2
+        sigma_theta = 0.4**2
 
-        
-        return np.exp((x_pred-x_obs)**2/2/sigma_pos)*np.exp((y_pred-y_obs)**2/2/sigma_pos)*\
-            np.exp((acc_y_pred-acc_y_obs)**2/2/sigma)*np.exp((acc_x_pred-acc_x_obs)**2/2/sigma)*\
-            np.exp((theta_pred-theta_obs)**2/2/sigma)
+
+        return np.exp(-(x_pred-x_obs)**2/2/sigma_pos)*np.exp(-(y_pred-y_obs)**2/2/sigma_pos)*\
+            np.exp(-(acc_y_pred-acc_y_obs)**2/2/sigma)*np.exp(-(acc_x_pred-acc_x_obs)**2/2/sigma)*\
+            np.exp(-(theta_pred-theta_obs)**2/2/sigma_theta)
 
 
 class particle_filter():
@@ -59,7 +61,7 @@ class particle_filter():
         else:
             self.Np = 10
 
-        self.particles = [particle(x_state=np.zeros((7, ))) for i in range(self.Np)]
+        self.particles = [particle(x_state=np.zeros((7, ))) for _ in range(self.Np)]
             
         if('algorithm' in kwargs):
             self.algorithm = kwargs['algorithm']
@@ -68,7 +70,7 @@ class particle_filter():
             
         self.weights = np.ones((self.Np, 1))/self.Np
         
-        self.t = 1
+        self.t = 0
             
         self.old_particles = self.particles
         self.old_weights = self.weights
@@ -78,7 +80,7 @@ class particle_filter():
     
     def setNumberParticles(self, Np):
         self.Np = Np
-        self.particles = [particle() for i in range(self.Np)]
+        self.particles = [particle() for _ in range(self.Np)]
         self.weights = np.ones((self.Np, 1))/Np
         
     def setCurrentStep(self, t):
@@ -87,13 +89,13 @@ class particle_filter():
         self.algorithm = alg
         
     def resetParticles(self, **kwargs):
-        self.particles = [particle(x_state=np.zeros((7, ))) for i in range(self.Np)]
+        self.particles = [particle(x_state=np.zeros((7, ))) for _ in range(self.Np)]
             
         self.old_particles = self.particles
-        
+
         self.weights = np.ones((self.Np, 1))/self.Np
         self.old_weights = self.weights
-        self.t = 1
+        self.t = 0
         
     def particle_filtering(self):
         
@@ -109,13 +111,17 @@ class particle_filter():
             self.particles[i].prediction()
             
             self.weights[i] *= self.particles[i].likelihood(z)
-            
-        self.weights = self.weights/np.sum(self.weights)
+
+        w_sum = np.sum(self.weights)
+        if w_sum!=0:
+            self.weights = self.weights/w_sum
+        else:
+            self.weights = np.ones((self.Np, 1))/self.Np
             
         estimation = np.zeros((7, ))
         
         for idx, part in enumerate(self.particles):
-            estimation += part.getEstimation()*self.weights[idx]
+            estimation += part.x_current*self.weights[idx]
         
         self.old_particles = self.particles 
         self.old_weights = self.weights
@@ -147,14 +153,18 @@ class particle_filter():
        
         for idx in range(self.Np):
             idy = indices[idx]
-            x_state = self.particles[idy].getValues()
+            x_state = self.particles[idy].x_current
             new_particles[idx] = particle(x_state=x_state)
            
         return new_particles, new_weights
     
     def __dynamic_resampling(self):
-        
-        effective_size =1/np.sum(self.weights**2)
+
+        w_s = np.sum(self.weights**2)
+        if w_s != 0:
+            effective_size =1/np.sum(self.weights**2)
+        else:
+            effective_size = self.Np/2
 
         if(effective_size < self.Np/2):
             return self.__iterative_resampling()

@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 
 
-def nearPD(A, epsilon=1e-4, zero=1e-8):
+def nearPD(A, epsilon=1e-8, zero=1e-10):
     r"""This function clips eigen values of an uncertainty matrix `A`, clipping threshold is specified by `epsilon`.
 
     Since eigen value represent variances it makes no physical sense for them to be negative, but that can happen
@@ -239,8 +239,8 @@ class UnscentedKalmanFilter(object):
         self.dim_u = dim_u
 
         # Parameters for sigma point generation :
-        self._alpha = 1
-        self._beta = 0
+        self._alpha = 1e-2
+        self._beta = 2
         self._k = 3 - self.dim_x
 
         self.x = np.zeros((dim_x,))  # state
@@ -275,9 +275,8 @@ class UnscentedKalmanFilter(object):
 
         self.inv = np.linalg.inv  # storing the linalg.inv function for easier access
         self.cholesky = np.linalg.cholesky  # storing the linalg.cholesky function for easier access
-        self.eps_Q = np.eye(dim_x) * 0.01 / 10  # Can be changed, used to guarantee that all eigen values of P are > 0
-        self.eps_R = np.eye(dim_z) * 0.01 / 10  # Can be changed, used to guarantee that all eigen values of P are > 0
-        self.max_iter = 10  # Can be changed, determines how many times will we try to find the chol decomposition
+        self.eps_Q = np.eye(dim_x) * 0  # Can be changed, used to guarantee that all eigen values of P are > 0
+        self.eps_R = np.eye(dim_z) * 0  # Can be changed, used to guarantee that all eigen values of P are > 0
         self.divergence_uncertainty = 5   # Can be changed, represents our uncertainty in estimation after algorithm
         # diverges
 
@@ -364,7 +363,6 @@ class UnscentedKalmanFilter(object):
 
         # Reading the parameter values for the purpose of having more readable mathematical expressions
         alpha = self.alpha
-        beta = self.beta
         k = self.k
         n = self.dim_x
         lamb = (n + k) * alpha ** 2 - n
