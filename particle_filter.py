@@ -11,12 +11,12 @@ class particle():
     def prediction(self):
         dt = 0.05
         x_state = self.x_current
-        sigma_pos = 0.2
+        sigma_pos = 0
         sigma = 0.2
-        self.x_new = np.array([x_state[0] + (np.cos(x_state[6]) * x_state[1] - np.sin(x_state[6]) * x_state[3]) * dt + np.random.randn()*sigma_pos,
+        self.x_new = np.array([x_state[0] + (np.cos(x_state[6]) * x_state[1] - np.sin(x_state[6]) * x_state[4]) * dt,
                                x_state[1] + x_state[2] * dt,
                                x_state[2] + np.random.randn()*sigma,
-                               x_state[3] + (np.cos(x_state[6]) * x_state[3] + np.sin(x_state[6]) * x_state[1]) * dt + np.random.randn()*sigma_pos,
+                               x_state[3] + (np.cos(x_state[6]) * x_state[4] + np.sin(x_state[6]) * x_state[1]) * dt,
                                x_state[4] + x_state[5] * dt,
                                x_state[5] + np.random.randn()*sigma,
                                x_state[6] + np.random.randn()*sigma
@@ -39,7 +39,7 @@ class particle():
         theta_pred = self.x_current[6]
 
         sigma_pos = .1**2
-        sigma_theta = 0.4**2
+        sigma_theta = 0.1**2
 
 
         return np.exp(-(x_pred-x_obs)**2/2/sigma_pos)*np.exp(-(y_pred-y_obs)**2/2/sigma_pos)*\
@@ -147,14 +147,15 @@ class particle_filter():
         
     def __iterative_resampling(self):
         new_particles = [0]*self.Np
-        new_weights =  np.ones((self.Np, 1))/self.Np
+        new_weights = np.ones((self.Np, 1))/self.Np
 
         indices = np.random.choice(self.Np, self.Np, p=self.weights.flatten())
        
         for idx in range(self.Np):
             idy = indices[idx]
             x_state = self.particles[idy].x_current
-            new_particles[idx] = particle(x_state=x_state)
+
+            new_particles[idx] = particle(x_state=x_state + np.random.randn(x_state.shape[0])*0.01)
            
         return new_particles, new_weights
     

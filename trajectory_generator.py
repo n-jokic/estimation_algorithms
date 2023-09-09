@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 def trajectory_param_init(t):
     _T = t[-1]
@@ -41,7 +42,7 @@ def generate_trajectory(t):
 def measure(x_state):
     sigma_pos = 0.1
     sigma = 0.1
-    sigma_theta = 0.4
+    sigma_theta = 0.1
 
     z = np.array([x_state[0] + np.random.randn()*sigma_pos,
                   x_state[2] + np.random.randn()*sigma,
@@ -72,3 +73,28 @@ def measure_full_trajectory_kalman(trajectory):
 
     return z
 
+def plot_example(N, dt):
+    dt = dt
+    N = N
+    t_end = (N - 1) * dt
+    t = np.linspace(0, t_end, N)
+    trajectory = generate_trajectory(t)
+    z = measure_full_trajectory(trajectory)
+    symb = ['sx [m]', 'ax [ms^-2] ', 'sy [m]', 'ay [ms^-2]', r'theta [rad]']
+    traj = [0, 2, 3, 5, 6]
+
+
+    # Generate a timestamp for unique filenames
+    num_meas = 5
+
+    for state_idx in range(num_meas):
+        plt.figure(figsize=(8, 4))
+        plt.plot(t, z[:, state_idx], 'b--', marker='o', label='zašumljena trajektorija')
+        plt.plot(t, trajectory[:, traj[state_idx]], 'k-', label='trajektorija')
+        plt.grid(True)
+        plt.legend()
+        plt.xlabel('t [s]')
+        plt.ylabel(symb[state_idx])
+        plt.tight_layout()
+        nm = os.path.join('figures', f'example_{symb[state_idx]}.png')
+        plt.savefig(nm, dpi=600)

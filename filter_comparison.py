@@ -45,21 +45,18 @@ def param_init(x0=np.zeros((7, ))):
     trajectory = trajectory_generator.generate_trajectory(t)
     z = trajectory_generator.measure_full_trajectory(trajectory)
     x0 = x0
-    theta = x0[6]
 
-    R = (np.diag([.1, 0.1, .1, 0.1, 0.4])**2)
-    Q = np.array([[.1 ** 2, np.cos(theta) * 0.1 ** 2 * dt, 0, 0, -np.sin(theta) * 0.1 ** 2 * dt, 0, 0],
-                  [np.cos(theta) * 0.1 ** 2 * dt, 0.1 ** 2, 0.1 ** 2 * dt, np.sin(theta) * 0.1 ** 2 * dt, 0, 0,
-                   0],
+    R = (np.diag([.1, 0.1, .1, 0.1, 0.1])**2)
+    Q = np.array([[0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0.1 ** 2 * dt, 0, 0, 0, 0],
                   [0, 0.1 ** 2 * dt, 0.1 ** 2, 0, 0, 0, 0],
-                  [0, np.sin(theta) * 0.1 ** 2 * dt, 0, .1 ** 2, np.cos(theta) * 0.1 ** 2 * dt, 0, 0],
-                  [-np.sin(theta) * 0.1 ** 2 * dt, 0, 0, np.cos(theta) * 0.4 ** 2 * dt, 0.1 ** 2, 0.1 ** 2 * dt,
-                   0],
+                  [0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0.1 ** 2 * dt, 0],
                   [0, 0, 0, 0, 0.1 ** 2 * dt, 0.1 ** 2, 0],
-                  [0, 0, 0, 0, 0, 0, 0.4 ** 2]]
-                 )/2
+                  [0, 0, 0, 0, 0, 0, 0.1 ** 2]]
+                 )
 
-    P = np.eye(7)*10
+    P = np.eye(7)
 
     return t, trajectory, z, x0, R, Q, P
 
@@ -94,7 +91,7 @@ def ukf_init(x0, R, Q, P):
 
 def pf_init(z, t):
     sensor_data = [z[idx, :] for idx in range(len(t))]
-    pf_1 = pf.particle_filter(sensor_data=sensor_data, N_particles=10000, algorithm="dynamic_resampling")
+    pf_1 = pf.particle_filter(sensor_data=sensor_data, N_particles=20000, algorithm="dynamic_resampling")
 
     return pf_1
 
@@ -109,17 +106,6 @@ def run_comparison(x0, plot=False, save_plot=False):
     for idx, i in enumerate(t):
         ekf.update(z=z[idx, :])
         ekf_est[idx, :] = np.array(ekf.x)
-        theta = ekf_est[idx, 6]
-        ekf.Q = np.array([[.1 ** 2, np.cos(theta) * 0.1 ** 2 * dt, 0, 0, -np.sin(theta) * 0.1 ** 2 * dt, 0, 0],
-                          [np.cos(theta) * 0.1 ** 2 * dt, 0.1 ** 2, 0.1 ** 2 * dt, np.sin(theta) * 0.1 ** 2 * dt, 0, 0,
-                           0],
-                          [0, 0.1 ** 2 * dt, 0.1 ** 2, 0, 0, 0, 0],
-                          [0, np.sin(theta) * 0.1 ** 2 * dt, 0, .1 ** 2, np.cos(theta) * 0.1 ** 2 * dt, 0, 0],
-                          [-np.sin(theta) * 0.1 ** 2 * dt, 0, 0, np.cos(theta) * 0.4 ** 2 * dt, 0.1 ** 2, 0.1 ** 2 * dt,
-                           0],
-                          [0, 0, 0, 0, 0.1 ** 2 * dt, 0.1 ** 2, 0],
-                          [0, 0, 0, 0, 0, 0, 0.4 ** 2]]
-                         )/2
         ekf.predict()
 
     ukf = ukf_init(x0, R, Q, P)
@@ -127,15 +113,6 @@ def run_comparison(x0, plot=False, save_plot=False):
     for idx, i in enumerate(t):
         ukf.update(z=z[idx, :])
         ukf_est[idx, :] = np.array(ukf.x)
-        theta = ukf_est[idx, 6]
-        ukf.Q = np.array([[.1**2,  np.cos(theta)*0.1**2*dt, 0, 0, -np.sin(theta)*0.1**2*dt, 0, 0],
-                  [np.cos(theta)*0.1**2*dt, 0.1**2, 0.1**2*dt, np.sin(theta)*0.1**2*dt, 0, 0, 0],
-                  [0,         0.1**2*dt, 0.1**2, 0, 0, 0, 0],
-                  [0, np.sin(theta)*0.1**2*dt, 0, .1**2,       np.cos(theta)*0.1**2*dt, 0,       0],
-                  [-np.sin(theta)*0.1**2*dt, 0, 0, np.cos(theta)*0.4**2*dt, 0.1**2, 0.1**2*dt, 0],
-                  [0, 0, 0, 0,         0.1**2*dt, 0.1**2, 0],
-                  [0, 0, 0, 0, 0, 0, 0.4**2]]
-                 )/2
         ukf.prediction()
 
     pf = pf_init(z, t)
@@ -165,11 +142,11 @@ def param_init_kalman(x0):
     x0 = x0
 
     R = np.diag([.1, .1])**2
-    Q = np.array([[.1**2, 0.1**2*dt, 0, 0],
+    Q = np.array([[0, 0.1**2*dt, 0, 0],
                   [0.1**2*dt, 0.1**2, 0, 0],
-                  [0, 0, .1**2, 0.1**2*dt],
-                  [0, 0, 0.1**2*dt, 0.1**2]])/2
-    P = np.eye(4)*10
+                  [0, 0, 0, 0.1**2*dt],
+                  [0, 0, 0.1**2*dt, 0.1**2]])
+    P = np.eye(4)
 
     return t, trajectory, z, x0, R, Q, P
 

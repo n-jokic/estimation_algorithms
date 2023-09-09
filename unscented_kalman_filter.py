@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 
 
-def nearPD(A, epsilon=1e-8, zero=1e-10):
+def nearPD(A, epsilon=1e-8, zero=0):
     r"""This function clips eigen values of an uncertainty matrix `A`, clipping threshold is specified by `epsilon`.
 
     Since eigen value represent variances it makes no physical sense for them to be negative, but that can happen
@@ -239,8 +239,8 @@ class UnscentedKalmanFilter(object):
         self.dim_u = dim_u
 
         # Parameters for sigma point generation :
-        self._alpha = 1e-2
-        self._beta = 2
+        self._alpha = 1
+        self._beta = 0
         self._k = 3 - self.dim_x
 
         self.x = np.zeros((dim_x,))  # state
@@ -365,6 +365,7 @@ class UnscentedKalmanFilter(object):
         alpha = self.alpha
         k = self.k
         n = self.dim_x
+        beta = self.beta
         lamb = (n + k) * alpha ** 2 - n
 
         # Calculating the weights
@@ -373,8 +374,8 @@ class UnscentedKalmanFilter(object):
         Wc = self.Wc * 0 + 1
         Wc /= 2 * (n + lamb)
         Wp[0, 0] *= 2 * lamb
-        #Wc[0, 0] = Wp[0, 0] + 1 - alpha ** 2 + beta
-        Wc[0, 0] = 0  # setting this to 0 guarantees that predicted matrix P > 0
+        Wc[0, 0] = Wp[0, 0] + 1 - alpha ** 2 + beta
+        #Wc[0, 0] = 0  # setting this to 0 guarantees that predicted matrix P > 0
 
         # Storing the calculated values
         self.Wp = Wp

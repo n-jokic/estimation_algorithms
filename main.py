@@ -8,6 +8,10 @@ import numpy as np
 import filter_comparison
 import matplotlib.pyplot as plt
 import os
+import trajectory_generator
+
+
+trajectory_generator.plot_example(101, 0.05)
 
 error = np.array([10, 1, -10, -1])
 filter_comparison.only_kalman(np.zeros(4, ) + error, plot=True, save_plot=True)
@@ -28,7 +32,7 @@ pf_rms = np.zeros((N_mc, 7))
 
 for i in range(N_mc):
     kf_rms[i, :] = filter_comparison.only_kalman(np.zeros(4, ))
-    e_rms, u_rms, p_rms = filter_comparison.run_comparison(np.zeros(7, ), plot=True, save_plot=True)
+    e_rms, u_rms, p_rms = filter_comparison.run_comparison(np.zeros(7, ))
     ekf_rms[i, :] = e_rms
     ukf_rms[i, :] = u_rms
     pf_rms[i, :] = p_rms
