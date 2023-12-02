@@ -6,17 +6,43 @@
   <component name="ChangeListManager">
     <list default="true" id="13286731-d50e-4e9a-be72-ba10036cf6c2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/figures/sx [m]_20230908184427.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/figures/sx [m]_20230908184436.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/figures/sy [m]_20230908184427.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/figures/sy [m]_20230908184436.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/figures/vx [ms^-1]_20230908184427.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/figures/vx [ms^-1]_20230908184436.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/figures/vy [ms^-1]_20230908184427.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/figures/vy [ms^-1]_20230908184436.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/ax [ms^-2] _20230908234529.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/ax [ms^-2] _20230908234849.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/ay [ms^-2]_20230908234529.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/ay [ms^-2]_20230908234849.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/example_ax [ms^-2] .png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/example_ay [ms^-2].png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/example_sx [m].png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/example_sy [m].png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/example_theta [rad].png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/sx [m]_20230908234301.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/sx [m]_20230908234307.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/sx [m]_20230908234529.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/sx [m]_20230908234849.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/sy [m]_20230908234301.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/sy [m]_20230908234307.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/sy [m]_20230908234529.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/sy [m]_20230908234849.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/theta [rad]_20230908234529.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/theta [rad]_20230908234849.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/vx [ms^-1]_20230908234301.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/vx [ms^-1]_20230908234307.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/vx [ms^-1]_20230908234529.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/vx [ms^-1]_20230908234849.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/vy [ms^-1]_20230908234301.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/vy [ms^-1]_20230908234307.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/vy [ms^-1]_20230908234529.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/figures/vy [ms^-1]_20230908234849.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/filter_comparison.py" beforeDir="false" afterPath="$PROJECT_DIR$/filter_comparison.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/particle_filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/particle_filter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/ekf_mean.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/ekf_mean.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/ekf_variance.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/ekf_variance.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/kf_mean.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/kf_mean.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/kf_variance.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/kf_variance.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/pf_mean.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/pf_mean.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/pf_variance.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/pf_variance.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/ukf_mean.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/ukf_mean.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/ukf_variance.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/ukf_variance.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trajectory_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/trajectory_generator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/unscented_kalman_filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/unscented_kalman_filter.py" afterDir="false" />
     </list>

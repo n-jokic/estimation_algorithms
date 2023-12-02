@@ -47,7 +47,7 @@ def nearPD(A, epsilon=1e-8, zero=0):
     eigval = np.real(eigval)
     eigvec = np.real(eigvec)
 
-    eigval[eigval < 0] = epsilon*50
+    eigval[eigval < 0] = epsilon
     eigval[eigval < zero] = epsilon
     eigval[eigval > 4] = 4
 
@@ -239,9 +239,9 @@ class UnscentedKalmanFilter(object):
         self.dim_u = dim_u
 
         # Parameters for sigma point generation :
-        self._alpha = 1
-        self._beta = 0
-        self._k = 3 - self.dim_x
+        self._alpha = 1e-2
+        self._beta = 2
+        self._k = 0
 
         self.x = np.zeros((dim_x,))  # state
         self.P = np.eye(dim_x)  # estimation uncertainty covariance
@@ -265,6 +265,7 @@ class UnscentedKalmanFilter(object):
         self.x_prior = self.x.copy()
         self.P_prior = self.P.copy()
 
+        self.X_trans = np.zeros((2 * dim_x + 1, dim_x))  # Transformed sigma points
         self.Wp = np.ones((2 * dim_x + 1, 1))  # weights for sigma points for state estimation
         self.Wc = np.ones((2 * dim_x + 1, 1))  # weights for sigma points for covariance estimation
         self._update_weights()
@@ -277,7 +278,7 @@ class UnscentedKalmanFilter(object):
         self.cholesky = np.linalg.cholesky  # storing the linalg.cholesky function for easier access
         self.eps_Q = np.eye(dim_x) * 0  # Can be changed, used to guarantee that all eigen values of P are > 0
         self.eps_R = np.eye(dim_z) * 0  # Can be changed, used to guarantee that all eigen values of P are > 0
-        self.divergence_uncertainty = 5   # Can be changed, represents our uncertainty in estimation after algorithm
+        self.divergence_uncertainty = 1   # Can be changed, represents our uncertainty in estimation after algorithm
         # diverges
 
     @property  # getter property for alpha
@@ -375,7 +376,7 @@ class UnscentedKalmanFilter(object):
         Wc /= 2 * (n + lamb)
         Wp[0, 0] *= 2 * lamb
         Wc[0, 0] = Wp[0, 0] + 1 - alpha ** 2 + beta
-        #Wc[0, 0] = 0  # setting this to 0 guarantees that predicted matrix P > 0
+        Wc[0, 0] = 0  # setting this to 0 guarantees that predicted matrix P > 0
 
         # Storing the calculated values
         self.Wp = Wp
@@ -410,7 +411,8 @@ class UnscentedKalmanFilter(object):
         try:
             self.P_chol = self.cholesky(self.P)
         except:
-            self.P_chol = self.divergence_uncertainty*self.Q
+            self.P_chol = np.sqrt(np.abs(self.P))*self.divergence_uncertainty
+            print('broke!')
 
     def _generate_sigma_points(self):
         r"""This function generates sigma points for purposes of inference of statistical
@@ -515,7 +517,7 @@ class UnscentedKalmanFilter(object):
         # x = sum(Wp_iX_i)                                 equation for mean calculation
         # P = sum(Wc_i(X_i - x)(X_i - x)')           equation for covariance calculation
         # Wp and Wc weights add up to 1, i.e., sum(Wp) = sum(Wc) = 1
-
+        self.X_trans = X
         x = (X * self.Wp).sum(axis=0)  # Python magic: Wp has the shape (2n+1, 1) and X has shape (2n+1, n)
         # as a first step Wp*X will result in matrix with shape (2n+1, n), each row from X will get multiplied
         # element wise with values from row vector Wp, next we want to sum all the rows, that can be achieved
@@ -583,7 +585,7 @@ class UnscentedKalmanFilter(object):
             self.v = np.array(0 * self.dim_z)
             return
         else:
-            z =  z
+            z = z
         #  Just making the function more flexible, in usual use case only u will get passed in as an argument,
         #  but there might exist some use cases where h and R could be adaptive based on some external logic
         if h is None:
@@ -596,7 +598,7 @@ class UnscentedKalmanFilter(object):
         # First we need to generate 2n + 1 sigma points, n is number of states in the model
         # Wc are weights used for covariance estimation
         # Wp are weights used for mean estimation
-        X = self._generate_sigma_points()
+        X = self.X_trans
         x = self.x
         P = self.P
 
